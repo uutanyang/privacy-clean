@@ -1,0 +1,24 @@
+node_modules/
+dist/
+.wrangler/
+.dev.vars
+
+# ── Dot files (hidden/system) ──
+.codebuddy/
+.DS_Store
+.env
+.env.*
+.vscode/
+.idea/
+
+# ── Privacy & secrets ──
+.dev.vars
+*.pem
+*.key
+*.secret
+credentials.json
+
+# ── WASM build artifacts ──
+wasm/target/
+*.wasm
+public/wasm/*.wasm
