@@ -33,6 +33,7 @@ async function loadWasm() {
 
 // ========================  TIER / AUTH STATE  ========================
 let userEmail = localStorage.getItem('pc_email') || '';
+let sessionToken = localStorage.getItem('pc_token') || '';
 let userTier = 'free';
 let isPro = false;
 const processedFiles = [];
@@ -40,7 +41,9 @@ const processedFiles = [];
 async function checkTier() {
   if (!userEmail) return;
   try {
-    const res = await fetch('/api/verify', { headers: { 'x-user-email': userEmail } });
+    const headers = { 'x-user-email': userEmail };
+    if (sessionToken) headers['Authorization'] = `Bearer ${sessionToken}`;
+    const res = await fetch('/api/verify', { headers });
     const data = await res.json();
     userTier = data.tier || 'free';
     isPro = data.isPro || userTier === 'pro' || userTier === 'lifetime';
@@ -79,6 +82,10 @@ if (location.search.includes('token=')) {
       if (data.email) {
         userEmail = data.email;
         localStorage.setItem('pc_email', userEmail);
+        if (data.token) {
+          sessionToken = data.token;
+          localStorage.setItem('pc_token', sessionToken);
+        }
         await checkTier();
       }
     } catch {}
@@ -349,43 +356,68 @@ async function stripPdfFallback(file) {
     metadataDetail.push({ field: 'XMP', value: '(XML metadata stream)' });
   }
 
-  // Byte-level safe stripping: work on Uint8Array directly
-  // Convert to string for regex operations, then back to bytes
-  // This preserves binary streams (images, fonts) that TextDecoder may corrupt
+  // Byte-level safe stripping: use Uint8Array operations directly
+  // Avoids latin-1 string concatenation which is O(n²) for large files
   let result = new Uint8Array(buf);
 
-  // For text-based operations, use the latin-1 encoding which preserves byte values
-  let str = '';
-  for (let i = 0; i < result.length; i++) {
-    str += String.fromCharCode(result[i]);
-  }
+  // Collect all replacements as [start, end, replacementBytes] tuples
+  const replacements = [];
 
   // Remove XMP metadata
-  str = str.replace(/<x:xmpmeta[\s\S]*?<\/x:xmpmeta>/gi, '');
+  const xmpPattern = /<x:xmpmeta[\s\S]*?<\/x:xmpmeta>/gi;
+  let match;
+  const textForSearch = new TextDecoder('utf-8', { fatal: false }).decode(buf);
+  while ((match = xmpPattern.exec(textForSearch)) !== null) {
+    // Find byte offsets by counting bytes in the substring before the match
+    const beforeMatch = textForSearch.substring(0, match.index);
+    const byteStart = new TextEncoder().encode(beforeMatch).length;
+    const matchBytes = new TextEncoder().encode(match[0]);
+    replacements.push([byteStart, byteStart + matchBytes.length, new Uint8Array(0)]);
+  }
 
-  // Clear metadata field values (replace value with empty string, keep structure)
-  // Handle both () string values and <> hex string values
-  str = str.replace(/\/Author\s*\([^)]*\)/gi, '/Author ()');
-  str = str.replace(/\/Creator\s*\([^)]*\)/gi, '/Creator ()');
-  str = str.replace(/\/Producer\s*\([^)]*\)/gi, '/Producer ()');
-  str = str.replace(/\/Title\s*\([^)]*\)/gi, '/Title ()');
-  str = str.replace(/\/Subject\s*\([^)]*\)/gi, '/Subject ()');
-  str = str.replace(/\/Keywords\s*\([^)]*\)/gi, '/Keywords ()');
-  str = str.replace(/\/CreationDate\s*\([^)]*\)/gi, '/CreationDate ()');
-  str = str.replace(/\/ModDate\s*\([^)]*\)/gi, '/ModDate ()');
-  str = str.replace(/\/Author\s*<[^>]*>/gi, '/Author <>');
-  str = str.replace(/\/Creator\s*<[^>]*>/gi, '/Creator <>');
-  str = str.replace(/\/Producer\s*<[^>]*>/gi, '/Producer <>');
-  str = str.replace(/\/Title\s*<[^>]*>/gi, '/Title <>');
-  str = str.replace(/\/Subject\s*<[^>]*>/gi, '/Subject <>');
-  str = str.replace(/\/Keywords\s*<[^>]*>/gi, '/Keywords <>');
-  str = str.replace(/\/CreationDate\s*<[^>]*>/gi, '/CreationDate <>');
-  str = str.replace(/\/ModDate\s*<[^>]*>/gi, '/ModDate <>');
+  // Clear metadata field values
+  const fieldNames = ['Author', 'Creator', 'Producer', 'Title', 'Subject', 'Keywords', 'CreationDate', 'ModDate'];
+  for (const field of fieldNames) {
+    // Match /Fieldname (value) and /Fieldname <hexvalue>
+    const parenPattern = new RegExp(`/${field}\\s*\\([^)]*\\)`, 'gi');
+    const hexPattern = new RegExp(`/${field}\\s*<[^>]*>`, 'gi');
+    
+    for (const pattern of [parenPattern, hexPattern]) {
+      while ((match = pattern.exec(textForSearch)) !== null) {
+        const beforeMatch = textForSearch.substring(0, match.index);
+        const byteStart = new TextEncoder().encode(beforeMatch).length;
+        const matchBytes = new TextEncoder().encode(match[0]);
+        // Find the opening ( or < within the match
+        const matchStr = match[0];
+        const parenIdx = matchStr.indexOf('(');
+        const hexIdx = matchStr.indexOf('<');
+        let clearStart, clearEnd;
+        if (parenIdx !== -1) {
+          clearStart = byteStart + parenIdx + 1; // after (
+          clearEnd = byteStart + matchBytes.length - 1; // before )
+        } else if (hexIdx !== -1) {
+          clearStart = byteStart + hexIdx + 1; // after <
+          clearEnd = byteStart + matchBytes.length - 1; // before >
+        } else {
+          continue;
+        }
+        if (clearStart < clearEnd) {
+          // Replace value bytes with spaces (preserves byte count)
+          const spaces = new Uint8Array(clearEnd - clearStart).fill(0x20);
+          replacements.push([clearStart, clearEnd, spaces]);
+        }
+      }
+    }
+  }
 
-  // Convert back to bytes using latin-1 (preserves byte values exactly)
-  const cleaned = new Uint8Array(str.length);
-  for (let i = 0; i < str.length; i++) {
-    cleaned[i] = str.charCodeAt(i);
+  // Sort replacements by start position (reverse order for safe in-place editing)
+  replacements.sort((a, b) => b[0] - a[0]);
+
+  // Apply replacements (from end to start to preserve offsets)
+  for (const [start, end, replacement] of replacements) {
+    const before = result.slice(0, start);
+    const after = result.slice(end);
+    result = new Uint8Array([...before, ...replacement, ...after]);
   }
 
   return {
@@ -429,8 +461,21 @@ function downloadAuditReport() {
   showToast('Audit report downloaded', 'success');
 }
 
+// ========================  DARK MODE  ========================
+function initDarkMode() {
+  const saved = localStorage.getItem('pc_dark');
+  if (saved === 'true' || (!saved && matchMedia('(prefers-color-scheme:dark)').matches)) {
+    document.documentElement.classList.add('dark');
+  }
+}
+function toggleDarkMode() {
+  document.documentElement.classList.toggle('dark');
+  localStorage.setItem('pc_dark', document.documentElement.classList.contains('dark'));
+}
+
 // ========================  INIT  ========================
 document.addEventListener('DOMContentLoaded', async () => {
+  initDarkMode();
   setupDragDrop();
   loadWasm(); // Preload WASM in background
   if (userEmail) await checkTier();

@@ -39,7 +39,7 @@ app.use('/api/*', async (c, next) => {
     return cors({
       origin: '*',
       allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'x-user-email'],
+      allowHeaders: ['Content-Type', 'x-user-email', 'Authorization'],
       maxAge: 86400,
     })(c, next)
   }
@@ -50,7 +50,7 @@ app.use('/api/*', async (c, next) => {
     return cors({
       origin,
       allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
-      allowHeaders: ['Content-Type', 'x-user-email'],
+      allowHeaders: ['Content-Type', 'x-user-email', 'Authorization'],
       maxAge: 86400,
       credentials: true,
     })(c, next)
@@ -163,6 +163,45 @@ app.use('/api/auth', async (c, next) => {
   if (record.count > maxRequests) {
     trackEvent(c, 'rate_limit_exceeded', { detail: 'auth' })
     return c.json({ error: 'rate_limit_exceeded', message: 'Too many requests. Please wait a minute.' }, 429)
+  }
+
+  await next()
+})
+
+// ── Rate limiting for magic link token verification ───────────
+app.use('/api/auth', async (c, next) => {
+  // Only rate-limit the verify action — peek at body without consuming it
+  if (c.req.method !== 'POST') return next()
+  try {
+    const rawBody = await c.req.raw.clone().text()
+    const body = JSON.parse(rawBody) as { action?: string }
+    if (body.action !== 'verify') return next()
+  } catch {
+    return next()
+  }
+
+  const ip = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown'
+  const key = `ratelimit:verify:${ip}`
+  const now = Date.now()
+  const windowMs = 60_000
+  const maxAttempts = 10
+
+  const raw = await c.env.KV.get(key)
+  const record = raw ? JSON.parse(raw) as { count: number; resetAt: number } : { count: 0, resetAt: now + windowMs }
+
+  if (now > record.resetAt) {
+    record.count = 0
+    record.resetAt = now + windowMs
+  }
+
+  record.count++
+
+  const ttl = Math.ceil((record.resetAt - now) / 1000)
+  await c.env.KV.put(key, JSON.stringify(record), { expirationTtl: Math.max(ttl, 1) })
+
+  if (record.count > maxAttempts) {
+    trackEvent(c, 'rate_limit_exceeded', { detail: 'token_verify' })
+    return c.json({ error: 'rate_limit_exceeded', message: 'Too many verification attempts. Please wait a minute.' }, 429)
   }
 
   await next()
@@ -296,14 +335,46 @@ app.get('/api/verify', async (c) => {
   return c.json({ tier, email: user.email, isPro: tier === 'pro' || tier === 'lifetime' })
 })
 
-// ── GDPR: Delete user data ──────────────────────────────────
-app.delete('/api/user', async (c) => {
-  const email = c.req.header('x-user-email')?.toLowerCase().trim()
-  if (!email) return c.json({ error: 'missing_email', message: 'x-user-email header required' }, 400)
-
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return c.json({ error: 'invalid_email' }, 400)
+// ── GDPR: Export user data (Right of Access / Data Portability) ──
+app.get('/api/user', async (c) => {
+  // Require JWT authentication for data access
+  const authHeader = c.req.header('Authorization')
+  if (!authHeader?.startsWith('Bearer ')) {
+    return c.json({ error: 'unauthorized', message: 'Authentication required. Sign in first.' }, 401)
   }
+  const payload = await verifyToken(authHeader.slice(7), c.env.JWT_SECRET)
+  if (!payload?.email) {
+    return c.json({ error: 'invalid_token', message: 'Session expired. Please sign in again.' }, 401)
+  }
+
+  const email = (payload.email as string).toLowerCase().trim()
+  const data = await c.env.KV.get(`user:${email}`)
+  if (!data) {
+    return c.json({ email, data: null, message: 'No data stored for this account' })
+  }
+
+  const user = JSON.parse(data) as Record<string, unknown>
+  // Remove internal fields from export
+  const exportData = { ...user }
+  delete exportData.subscriptionId
+
+  trackEvent(c, 'gdpr_data_exported', { email })
+  return c.json({ email, data: exportData })
+})
+
+// ── GDPR: Delete user data (Right to Erasure) ──────────────
+app.delete('/api/user', async (c) => {
+  // Require JWT authentication for data deletion
+  const authHeader = c.req.header('Authorization')
+  if (!authHeader?.startsWith('Bearer ')) {
+    return c.json({ error: 'unauthorized', message: 'Authentication required. Sign in first.' }, 401)
+  }
+  const payload = await verifyToken(authHeader.slice(7), c.env.JWT_SECRET)
+  if (!payload?.email) {
+    return c.json({ error: 'invalid_token', message: 'Session expired. Please sign in again.' }, 401)
+  }
+
+  const email = (payload.email as string).toLowerCase().trim()
 
   // Verify user exists
   const data = await c.env.KV.get(`user:${email}`)
@@ -321,12 +392,23 @@ app.delete('/api/user', async (c) => {
     await c.env.KV.delete(key.name)
   }
 
-  // Delete any pending tokens for this email (best-effort scan)
-  // Note: tokens are short-lived (10min), so this is mostly cosmetic
+  // Delete any pending magic link tokens for this email (best-effort scan)
+  const tokens = await c.env.KV.list({ prefix: 'token:' })
+  for (const key of tokens.keys) {
+    const val = await c.env.KV.get(key.name)
+    if (val) {
+      try {
+        const record = JSON.parse(val) as { email: string; used: boolean }
+        if (record.email === email) {
+          await c.env.KV.delete(key.name)
+        }
+      } catch { /* skip malformed entries */ }
+    }
+  }
 
   trackEvent(c, 'gdpr_data_deleted', { email })
 
-  return c.json({ ok: true, message: 'All personal data has been deleted' })
+  return c.json({ ok: true, message: 'All personal data has been deleted', logout: true })
 })
 
 // ── Paddle Webhook ───────────────────────────────────────────
@@ -374,7 +456,11 @@ app.post('/api/webhook', async (c) => {
         const isOneTime = !billingCycle || !billingCycle.frequency
         const tier = isOneTime ? 'lifetime' : 'pro'
         const subscriptionId = (data.subscription_id as string) || (data.id as string)
+        // Merge with existing user data to preserve createdAt etc.
+        const existing = await c.env.KV.get(`user:${email}`)
+        const existingUser = existing ? JSON.parse(existing) as Record<string, unknown> : {}
         await writeUserWithBackup(c.env.KV, email, {
+          ...existingUser,
           email,
           tier,
           subscriptionId,
@@ -388,7 +474,11 @@ app.post('/api/webhook', async (c) => {
       case 'subscription.activated':
       case 'subscription.updated': {
         const subscriptionId = (data.subscription_id as string) || (data.id as string)
+        // Merge with existing user data to preserve createdAt etc.
+        const existing = await c.env.KV.get(`user:${email}`)
+        const existingUser = existing ? JSON.parse(existing) as Record<string, unknown> : {}
         await writeUserWithBackup(c.env.KV, email, {
+          ...existingUser,
           email,
           tier: 'pro',
           subscriptionId,
@@ -403,12 +493,13 @@ app.post('/api/webhook', async (c) => {
       case 'subscription.past_due': {
         // Only downgrade if user is on subscription tier (pro), not lifetime
         const existing = await c.env.KV.get(`user:${email}`)
-        const existingUser = existing ? JSON.parse(existing) as { tier: string } : null
+        const existingUser = existing ? JSON.parse(existing) as Record<string, unknown> : null
         if (existingUser && existingUser.tier === 'lifetime') {
           console.log(`Lifetime user ${email} cancellation ignored — keeps lifetime access`)
           break
         }
         await writeUserWithBackup(c.env.KV, email, {
+          ...(existingUser || {}),
           email,
           tier: 'free',
           updatedAt: Date.now(),

@@ -18,6 +18,15 @@ export async function verifyPaddleSignature(rawBody: string, signature: string, 
   const timestamp = tsMatch[1];
   const h1Hex = h1Match[1];
 
+  // Replay protection: reject webhooks older than 5 minutes
+  const webhookTime = parseInt(timestamp, 10) * 1000; // Paddle uses seconds
+  const now = Date.now()
+  const maxAgeMs = 5 * 60 * 1000 // 5 minutes
+  if (Math.abs(now - webhookTime) > maxAgeMs) {
+    console.warn('Paddle webhook timestamp too old or in future:', timestamp, 'now:', now / 1000)
+    return false
+  }
+
   // Paddle v2: HMAC-SHA256(secret, "ts=<timestamp>.<body>")
   const payload = `ts=${timestamp}.${rawBody}`;
 

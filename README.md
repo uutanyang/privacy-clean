@@ -97,8 +97,11 @@ privacy-clean/
 | Method | Path | 说明 | 安全措施 |
 |--------|------|------|----------|
 | GET | `/api/health` | 健康检查 | 无 |
+| GET | `/api/config` | 前端公共配置（Paddle/Turnstile 公共 ID） | 无（仅暴露非密钥 ID） |
 | POST | `/api/auth` | Magic Link 登录（action=request/verify） | Turnstile + Rate Limit (5/min) |
-| GET | `/api/verify` | 查询订阅状态（Header: x-user-email） | 邮箱校验 |
+| GET | `/api/verify` | 查询订阅状态（支持 JWT Bearer 或 x-user-email） | JWT 可选 + 邮箱校验 |
+| GET | `/api/user` | GDPR 数据导出（Right of Access） | JWT Bearer 必须 |
+| DELETE | `/api/user` | GDPR 数据删除（Right to Erasure） | JWT Bearer 必须 |
 | POST | `/api/webhook` | Paddle 支付回调 | HMAC-SHA256 签名验证 |
 
 ## 安全措施
@@ -196,15 +199,22 @@ npx wrangler secret put RESEND_API_KEY
 3. 记录 **Price ID**（如 `pri_01j...`）
 4. 进入 Developer Tools → Authentication → 复制 **Client-side Token** 和 **Webhook Secret**
 
-#### 7.2 填入前端
+#### 7.2 填入环境变量
 
-编辑 `public/js/app.js`：
+编辑 `wrangler.jsonc` 的 `vars` 部分：
 
-```js
-const PADDLE_CLIENT_TOKEN = 'your_sandbox_client_token';
-const PADDLE_PRICE_ID = 'pri_your_subscription_price_id';
-const PADDLE_LIFETIME_PRICE_ID = 'pri_your_lifetime_price_id';
+```jsonc
+"vars": {
+  "PADDLE_ENV": "sandbox",                   // 或 "production"
+  "PADDLE_CLIENT_TOKEN": "your_client_token", // Paddle Client-side Token
+  "PADDLE_PRICE_ID": "pri_01j...",            // Pro 订阅 Price ID
+  "PADDLE_LIFETIME_PRICE_ID": "pri_01j...",   // Lifetime 买断 Price ID
+  "TURNSTILE_SITE_KEY": "0x4AAAAA...",         // Cloudflare Turnstile Site Key
+  "ALLOWED_ORIGINS": ""                        // 生产域名，逗号分隔
+}
 ```
+
+> 前端不再硬编码 Paddle/Turnstile 配置，而是通过 `/api/config` 端点从后端环境变量加载（仅暴露公共 ID，不含密钥）。
 
 #### 7.3 设置 Secrets
 
@@ -219,7 +229,7 @@ npx wrangler secret put TURNSTILE_SECRET_KEY
 
 1. 在 [Cloudflare Dashboard](https://dash.cloudflare.com/?to=/:account/turnstile) 创建 Turnstile Site
 2. 复制 **Site Key** 和 **Secret Key**
-3. 前端 `public/js/app.js` 填入 `TURNSTILE_SITE_KEY`
+3. 在 `wrangler.jsonc` 的 `vars` 中填入 `TURNSTILE_SITE_KEY`
 4. 后端 `npx wrangler secret put TURNSTILE_SECRET_KEY`
 
 ### 9. 配置 CORS（生产环境）

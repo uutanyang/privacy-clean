@@ -20,6 +20,14 @@ export async function verifyToken(token: string, secret: string): Promise<Record
   const parts = token.split('.');
   if (parts.length !== 3) return null;
 
+  // Verify the header specifies HS256 — prevent alg:none attack
+  try {
+    const header = JSON.parse(b64UrlDecodeString(parts[0]));
+    if (header.alg !== 'HS256') return null;
+  } catch {
+    return null;
+  }
+
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
     'raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']

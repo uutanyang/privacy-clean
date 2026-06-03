@@ -679,42 +679,68 @@ async function stripPdfMetadata(bytesOrFile) {
     bytes = new Uint8Array(buf);
   }
 
-  // Use latin-1 encoding to preserve all byte values exactly
-  let str = '';
-  for (let i = 0; i < bytes.length; i++) {
-    str += String.fromCharCode(bytes[i]);
-  }
+  // Byte-level safe stripping: use Uint8Array operations directly
+  // Avoids latin-1 string concatenation which is O(n²) for large files
+  let result = new Uint8Array(bytes);
+
+  // Collect all replacements as [start, end, replacementBytes] tuples
+  const replacements = [];
 
   // Remove XMP metadata
-  str = str.replace(/<x:xmpmeta[\s\S]*?<\/x:xmpmeta>/gi, '');
-
-  // Clear metadata field values (keep structure, empty the values)
-  // Handle both () string values and <> hex string values
-  str = str.replace(/\/Author\s*\([^)]*\)/gi, '/Author ()');
-  str = str.replace(/\/Creator\s*\([^)]*\)/gi, '/Creator ()');
-  str = str.replace(/\/Producer\s*\([^)]*\)/gi, '/Producer ()');
-  str = str.replace(/\/Title\s*\([^)]*\)/gi, '/Title ()');
-  str = str.replace(/\/Subject\s*\([^)]*\)/gi, '/Subject ()');
-  str = str.replace(/\/Keywords\s*\([^)]*\)/gi, '/Keywords ()');
-  str = str.replace(/\/CreationDate\s*\([^)]*\)/gi, '/CreationDate ()');
-  str = str.replace(/\/ModDate\s*\([^)]*\)/gi, '/ModDate ()');
-  // Hex string values: /Author <4a6f686e> → /Author <>
-  str = str.replace(/\/Author\s*<[^>]*>/gi, '/Author <>');
-  str = str.replace(/\/Creator\s*<[^>]*>/gi, '/Creator <>');
-  str = str.replace(/\/Producer\s*<[^>]*>/gi, '/Producer <>');
-  str = str.replace(/\/Title\s*<[^>]*>/gi, '/Title <>');
-  str = str.replace(/\/Subject\s*<[^>]*>/gi, '/Subject <>');
-  str = str.replace(/\/Keywords\s*<[^>]*>/gi, '/Keywords <>');
-  str = str.replace(/\/CreationDate\s*<[^>]*>/gi, '/CreationDate <>');
-  str = str.replace(/\/ModDate\s*<[^>]*>/gi, '/ModDate <>');
-
-  // Convert back to bytes using latin-1 (preserves byte values exactly)
-  const cleaned = new Uint8Array(str.length);
-  for (let i = 0; i < str.length; i++) {
-    cleaned[i] = str.charCodeAt(i);
+  const xmpPattern = /<x:xmpmeta[\s\S]*?<\/x:xmpmeta>/gi;
+  let match;
+  const textForSearch = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+  while ((match = xmpPattern.exec(textForSearch)) !== null) {
+    const beforeMatch = textForSearch.substring(0, match.index);
+    const byteStart = new TextEncoder().encode(beforeMatch).length;
+    const matchBytes = new TextEncoder().encode(match[0]);
+    // Replace XMP with spaces to preserve byte offsets
+    replacements.push([byteStart, byteStart + matchBytes.length, new Uint8Array(matchBytes.length).fill(0x20)]);
   }
 
-  return new File([cleaned], 'document.pdf', { type: 'application/pdf' });
+  // Clear metadata field values
+  const fieldNames = ['Author', 'Creator', 'Producer', 'Title', 'Subject', 'Keywords', 'CreationDate', 'ModDate'];
+  for (const field of fieldNames) {
+    const parenPattern = new RegExp(`/${field}\\s*\\([^)]*\\)`, 'gi');
+    const hexPattern = new RegExp(`/${field}\\s*<[^>]*>`, 'gi');
+
+    for (const pattern of [parenPattern, hexPattern]) {
+      while ((match = pattern.exec(textForSearch)) !== null) {
+        const beforeMatch = textForSearch.substring(0, match.index);
+        const byteStart = new TextEncoder().encode(beforeMatch).length;
+        const matchBytes = new TextEncoder().encode(match[0]);
+        const matchStr = match[0];
+        const parenIdx = matchStr.indexOf('(');
+        const hexIdx = matchStr.indexOf('<');
+        let clearStart, clearEnd;
+        if (parenIdx !== -1) {
+          clearStart = byteStart + parenIdx + 1;
+          clearEnd = byteStart + matchBytes.length - 1;
+        } else if (hexIdx !== -1) {
+          clearStart = byteStart + hexIdx + 1;
+          clearEnd = byteStart + matchBytes.length - 1;
+        } else {
+          continue;
+        }
+        if (clearStart < clearEnd) {
+          const spaces = new Uint8Array(clearEnd - clearStart).fill(0x20);
+          replacements.push([clearStart, clearEnd, spaces]);
+        }
+      }
+    }
+  }
+
+  // Sort replacements by start position (reverse order for safe in-place editing)
+  replacements.sort((a, b) => b[0] - a[0]);
+
+  // Apply replacements (from end to start to preserve offsets)
+  for (const [start, end, replacement] of replacements) {
+    const before = result.slice(0, start);
+    const after = result.slice(end);
+    result = new Uint8Array([...before, ...replacement, ...after]);
+  }
+
+  return new File([result], 'document.pdf', { type: 'application/pdf' });
 }
 
 // ========================  MOBILE NAV  ========================
