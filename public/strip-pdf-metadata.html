@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Strip PDF Metadata — Remove Author, Creator & Hidden Data | PrivacyClean</title>
+<meta name="description" content="Remove author names, creation dates, software info and XMP metadata from PDF files. 100% browser-based — your documents never leave your device. Free.">
+<meta name="keywords" content="remove PDF metadata, strip PDF author, PDF metadata cleaner, delete PDF creator, PDF privacy tool, remove PDF properties">
+<link rel="canonical" href="https://privacy-clean.pages.dev/strip-pdf-metadata">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Strip PDF Metadata — Free & Private">
+<meta property="og:description" content="Remove author, creator, dates and hidden metadata from PDF files. 100% in your browser. No upload. Free.">
+<meta property="og:url" content="https://privacy-clean.pages.dev/strip-pdf-metadata">
+<meta property="og:site_name" content="PrivacyClean">
+<meta property="og:image" content="https://privacy-clean.pages.dev/og-image.png">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Strip PDF Metadata — Free & Private">
+<meta name="twitter:description" content="Remove author, creator, dates and hidden metadata from PDF files. 100% in your browser.">
+<meta name="twitter:image" content="https://privacy-clean.pages.dev/og-image.png">
+
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230c0c0c'/><path d='M50 85s30-15 30-37V25L50 15 20 25v23c0 22 30 37 30 37z' fill='none' stroke='%23c45d3e' stroke-width='4'/></svg>">
+<link rel="manifest" href="/manifest.json">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/shared.css">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "name": "Strip Metadata from PDF Files",
+  "description": "Learn how to remove author, creator, and hidden metadata from PDF files using PrivacyClean — free and browser-based.",
+  "totalTime": "PT30S",
+  "step": [
+    { "@type": "HowToStep", "name": "Upload your PDF", "text": "Drag and drop or select your PDF file. PrivacyClean processes it entirely in your browser." },
+    { "@type": "HowToStep", "name": "Automatic metadata stripping", "text": "PrivacyClean removes Author, Creator, Producer, Title, Subject, Keywords, Creation/Mod dates, and XMP metadata." },
+    { "@type": "HowToStep", "name": "Download clean PDF", "text": "Download your metadata-free PDF instantly. The document content is unchanged." }
+  ],
+  "tool": { "@type": "HowToTool", "name": "PrivacyClean" }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    { "@type": "Question", "name": "What metadata does a PDF contain?", "acceptedAnswer": { "@type": "Answer", "text": "PDFs can contain Author, Creator (app used to create), Producer (PDF library), Title, Subject, Keywords, Creation Date, Modification Date, and XMP metadata streams." } },
+    { "@type": "Question", "name": "Can PDF metadata reveal personal information?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. The Author field often contains real names. The Creator field reveals the software used. Creation/Modification dates show when the document was worked on." } },
+    { "@type": "Question", "name": "Does stripping PDF metadata affect the content?", "acceptedAnswer": { "@type": "Answer", "text": "No. PrivacyClean only removes metadata fields. The document text, images, formatting, and layout remain exactly the same." } }
+  ]
+}
+</script>
+
+<!-- Page-specific overrides -->
+<style>
+  .container { max-width: 900px; }
+  .hero { padding: 64px 0 40px; }
+  .drop-zone { padding: 40px 24px; margin: 32px 0; max-width: 560px; }
+  .drop-zone-icon { margin: 0 auto 12px; width: 44px; height: 44px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <a href="/" class="logo"><div class="logo-mark"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>PrivacyClean</a>
+    <div class="nav-actions">
+      <a href="/" class="btn btn-sm">Home</a>
+      <a href="/#pricing" class="btn btn-accent btn-sm">Upgrade</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="container">
+      <div class="hero-label">PDF metadata removal</div>
+      <h1>Strip metadata from <span>PDF</span> files</h1>
+      <p class="hero-sub">
+        PDFs silently store <strong>author names, creation dates, software info</strong> and XMP metadata. Remove it all — <strong>without changing the document</strong>. 100% in your browser.
+      </p>
+    </div>
+  </section>
+
+  <div class="container">
+    <div id="drop-zone" class="drop-zone"
+         onclick="document.getElementById('file-input').click()" role="button" tabindex="0"
+         onkeydown="if(event.key==='Enter')document.getElementById('file-input').click()">
+      <div class="drop-zone-icon">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      </div>
+      <div class="drop-zone-label">Upload</div>
+      <div class="drop-zone-title">Drop PDF files here</div>
+      <div class="drop-zone-hint">PDF · ≤ 50mb · no upload</div>
+      <input type="file" id="file-input" style="display:none" accept=".pdf,application/pdf" onchange="handleFiles(this.files)">
+    </div>
+    <div id="pro-hint">Free plan: 1 file at a time. <a href="/#pricing" style="color:var(--accent)">Upgrade to Pro</a> for batch + audit report.</div>
+    <div id="batch-bar">
+      <span id="batch-count">0 files</span>
+      <div style="display:flex;gap:8px">
+        <button onclick="downloadAll()" class="btn btn-accent btn-sm">Download all</button>
+        <button onclick="downloadAuditReport()" class="btn btn-sm">Audit CSV</button>
+        <button onclick="clearAll()" class="btn btn-sm">Clear</button>
+      </div>
+    </div>
+    <div id="results"></div>
+  </div>
+
+  <div class="container">
+    <div class="section-label">// What your PDF contains</div>
+    <div class="info-grid">
+      <div class="info-cell">
+        <div class="info-cell-title">Author Name</div>
+        <div class="info-cell-desc">The document author's real name, often auto-filled from your OS account. Reveals who created or edited the document.</div>
+      </div>
+      <div class="info-cell">
+        <div class="info-cell-title">Creator & Producer</div>
+        <div class="info-cell-desc">The software used to create the PDF (Word, LaTeX, Chrome, etc.) and the PDF library (Ghostscript, iText, etc.). Reveals your tools and workflow.</div>
+      </div>
+      <div class="info-cell">
+        <div class="info-cell-title">Creation & Modification Dates</div>
+        <div class="info-cell-desc">Exact timestamps showing when the document was created and last modified. Can reveal work patterns and last-minute edits.</div>
+      </div>
+      <div class="info-cell">
+        <div class="info-cell-title">XMP Metadata Streams</div>
+        <div class="info-cell-desc">Embedded XML metadata that can contain extensive document history, revision info, and custom properties added by editing software.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="section-label">// Who needs PDF metadata removal</div>
+    <div class="who-grid">
+      <div class="who-cell">
+        <div class="who-icon"><svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+        <div class="who-title">Lawyers</div>
+        <div class="who-desc">Prevent opposing counsel from seeing document history and metadata.</div>
+      </div>
+      <div class="who-cell">
+        <div class="who-icon"><svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
+        <div class="who-title">Job Seekers</div>
+        <div class="who-desc">Remove your name and editing timestamps from resumes before sending.</div>
+      </div>
+      <div class="who-cell">
+        <div class="who-icon"><svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+        <div class="who-title">Journalists</div>
+        <div class="who-desc">Protect sources by stripping metadata from leaked documents before publishing.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="section-label">// FAQ</div>
+    <div style="max-width:600px">
+      <details class="faq-item" open>
+        <summary>What metadata does a PDF contain?</summary>
+        <div class="faq-answer">PDFs can contain Author, Creator (app used to create the PDF), Producer (PDF library), Title, Subject, Keywords, Creation Date, Modification Date, and XMP metadata streams. Many of these are auto-populated by your software.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Can PDF metadata reveal personal information?</summary>
+        <div class="faq-answer">Yes. The Author field often contains your real name from your OS account. The Creator field reveals what software you used. Creation/Modification dates show your working patterns and last-minute edits.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Does stripping PDF metadata affect the content?</summary>
+        <div class="faq-answer">No. PrivacyClean only removes metadata fields (Author, Creator, etc.) and XMP streams. The document text, images, formatting, and layout remain exactly the same. The content is completely unchanged.</div>
+      </details>
+      <details class="faq-item">
+        <summary>How do I check PDF metadata?</summary>
+        <div class="faq-answer">In any PDF reader: File → Properties (or Ctrl/Cmd+D). You'll see Author, Title, Creation Date, and more. Anyone who receives your PDF can see this information.</div>
+      </details>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      PrivacyClean — Privacy-first metadata removal. Your files never leave your browser.
+      <div class="footer-links">
+        <a href="/">Home</a>
+        <a href="/remove-exif-iphone">iPhone</a>
+        <a href="/remove-exif-android">Android</a>
+        <a href="/privacy">Privacy</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/landing-shared.js"></script>
+</body>
+</html>

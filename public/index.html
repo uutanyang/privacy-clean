@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PrivacyClean — Remove EXIF & Metadata from Files Locally</title>
+<meta name="description" content="Strip GPS, camera info, author names and hidden metadata from photos & PDFs. 100% browser-based — your files never leave your device. GDPR compliant.">
+<meta name="keywords" content="EXIF remover, metadata cleaner, privacy tool, GPS stripper, photo metadata, PDF metadata, GDPR, CCPA, data privacy">
+<link rel="canonical" href="https://privacy-clean.pages.dev/">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="PrivacyClean — Remove EXIF & Metadata Locally">
+<meta property="og:description" content="Strip GPS, camera info, and hidden metadata from photos & PDFs — 100% in your browser. GDPR compliant.">
+<meta property="og:url" content="https://privacy-clean.pages.dev/">
+<meta property="og:site_name" content="PrivacyClean">
+<meta property="og:image" content="https://privacy-clean.pages.dev/og-image.png">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="PrivacyClean — Remove EXIF & Metadata Locally">
+<meta name="twitter:description" content="Strip GPS, camera info, and hidden metadata from photos & PDFs — 100% in your browser.">
+<meta name="twitter:image" content="https://privacy-clean.pages.dev/og-image.png">
+
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230c0c0c'/><path d='M50 85s30-15 30-37V25L50 15 20 25v23c0 22 30 37 30 37z' fill='none' stroke='%23c45d3e' stroke-width='4'/></svg>">
+<link rel="manifest" href="/manifest.json">
+
+<script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="/css/shared.css">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "PrivacyClean",
+  "url": "https://privacy-clean.pages.dev",
+  "description": "Remove EXIF, GPS, and hidden metadata from photos and PDFs — 100% in your browser. GDPR & CCPA compliant.",
+  "applicationCategory": "UtilitiesApplication",
+  "operatingSystem": "Any",
+  "offers": [
+    { "@type": "Offer", "price": "0", "priceCurrency": "USD", "description": "Free: single file processing" },
+    { "@type": "Offer", "price": "4", "priceCurrency": "USD", "description": "Pro: batch processing + audit report", "billingIncrement": "P1M" },
+    { "@type": "Offer", "price": "89", "priceCurrency": "USD", "description": "Lifetime: pay once, use forever" }
+  ]
+}
+</script>
+
+<!-- Page-specific overrides -->
+<style>
+  /* Home page has 1100px container (shared default), no overrides needed */
+</style>
+</head>
+<body>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<!-- Cookie Consent -->
+<div id="cookie-banner">
+  <div class="cookie-inner">
+    <span>We use essential cookies only to keep you signed in. No tracking. <a href="/privacy" style="color:var(--accent)">Privacy Policy</a></span>
+    <div style="display:flex;gap:8px;flex-shrink:0">
+      <button class="btn btn-accent btn-sm" onclick="acceptCookies()">Accept</button>
+      <button class="btn btn-sm" onclick="declineCookies()">Decline</button>
+    </div>
+  </div>
+</div>
+
+<!-- Login Modal -->
+<div id="login-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="login-title">
+  <div class="modal-box">
+    <h2 id="login-title">Sign in</h2>
+    <p>Magic link — no password needed.</p>
+    <form id="login-form" onsubmit="handleLoginSubmit(event)">
+      <label for="login-email" class="input-label">Email</label>
+      <input type="email" id="login-email" required placeholder="you@example.com" class="input-field" autocomplete="email">
+      <div id="turnstile-container" style="margin-bottom:12px;display:flex;justify-content:center"></div>
+      <button type="submit" id="login-submit" class="btn btn-accent" style="width:100%;text-align:center">Send link</button>
+    </form>
+    <div id="magic-link-countdown" style="text-align:center;margin-top:12px;font-family:var(--mono);font-size:10px;color:var(--fg-dim)"></div>
+    <button onclick="closeLoginModal()" style="width:100%;margin-top:12px;font-family:var(--mono);font-size:10px;color:var(--fg-dim);background:none;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.1em">Cancel</button>
+  </div>
+</div>
+
+<!-- Header -->
+<header>
+  <div class="container">
+    <a href="/" class="logo" aria-label="PrivacyClean home">
+      <div class="logo-mark"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+      PrivacyClean
+    </a>
+    <nav class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <button class="hamburger" onclick="toggleMobileNav()" aria-label="Toggle navigation" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="nav-actions">
+      <span id="user-tier" class="tier-badge">Free</span>
+      <button id="btn-pro" onclick="openCheckout('pro')" class="btn btn-accent btn-sm" style="display:none">Upgrade</button>
+      <button id="btn-login" onclick="openLoginModal()" class="btn btn-sm">Sign in</button>
+      <button id="btn-logout" onclick="handleLogout()" class="btn btn-sm" style="display:none">Sign out</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-label">Browser-native metadata removal</div>
+      <h1 class="reveal">Remove metadata <span>before</span> you share files</h1>
+      <p class="hero-sub reveal">
+        Strip GPS coordinates, camera details, author names and hidden metadata from your photos & PDFs.
+        <strong>Everything runs in your browser</strong> — nothing ever leaves your device.
+      </p>
+      <div class="hero-cta reveal">
+        <button onclick="document.getElementById('file-input').click()" class="btn btn-accent">Select files</button>
+        <span class="hero-meta">or drag below · jpg png pdf · ≤ 50mb · no account</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Drop Zone -->
+  <div class="container">
+    <div id="drop-zone" class="drop-zone"
+         onclick="document.getElementById('file-input').click()"
+         role="button" tabindex="0" aria-label="Drop files here or click to browse"
+         onkeydown="if(event.key==='Enter')document.getElementById('file-input').click()">
+      <div class="drop-zone-icon">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </div>
+      <div class="drop-zone-label">Upload</div>
+      <div class="drop-zone-title">Drop files here or click to browse</div>
+      <div class="drop-zone-hint">All processing happens locally in your browser</div>
+      <input type="file" id="file-input" class="hidden" multiple accept="image/*,.pdf" onchange="handleFiles(this.files)" aria-label="Upload files" style="display:none">
+    </div>
+
+    <div id="pro-hint">Free plan: 1 file at a time. <a href="#" onclick="openCheckout('pro');return false" style="color:var(--accent)">Upgrade to Pro</a> for batch + audit report.</div>
+    <div id="batch-bar">
+      <span id="batch-count">0 files</span>
+      <div style="display:flex;gap:8px">
+        <button onclick="downloadAll()" class="btn btn-accent btn-sm">Download all</button>
+        <button onclick="downloadAuditReport()" class="btn btn-sm">Audit CSV</button>
+        <button onclick="clearAll()" class="btn btn-sm">Clear</button>
+      </div>
+    </div>
+    <div id="results"></div>
+  </div>
+
+  <!-- Social proof -->
+  <div class="container">
+    <div class="proof-row">
+      <div class="proof-item">
+        <div class="proof-icon"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+        <span class="proof-value">4.9/5</span>
+        <span class="proof-label">User rating</span>
+      </div>
+      <div class="proof-item">
+        <div class="proof-icon"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+        <span class="proof-value">10K+</span>
+        <span class="proof-label">Files cleaned</span>
+      </div>
+      <div class="proof-item">
+        <div class="proof-icon"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <span class="proof-value">Zero</span>
+        <span class="proof-label">Data breaches</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Features -->
+  <div class="container" id="features">
+    <div class="section-label">// Features</div>
+    <div class="features-grid">
+      <div class="feature-cell reveal">
+        <div class="feature-num">01</div>
+        <div class="feature-title">100% Client-Side</div>
+        <div class="feature-desc">All processing happens in your browser. Files never leave your device — we can't see them even if we wanted to.</div>
+      </div>
+      <div class="feature-cell reveal">
+        <div class="feature-num">02</div>
+        <div class="feature-title">Lossless Stripping</div>
+        <div class="feature-desc">WASM-powered metadata removal. No re-encoding, no compression artifacts. Your photos stay pixel-for-pixel identical.</div>
+      </div>
+      <div class="feature-cell reveal">
+        <div class="feature-num">03</div>
+        <div class="feature-title">Instant Download</div>
+        <div class="feature-desc">Cleaned files download immediately. No account needed for single-file use. No waiting, no email required.</div>
+      </div>
+      <div class="feature-cell reveal">
+        <div class="feature-num">04</div>
+        <div class="feature-title">Batch Processing</div>
+        <div class="feature-desc">Pro users can clean entire folders at once. Drop 100 files and download them all cleaned in seconds.</div>
+      </div>
+      <div class="feature-cell reveal">
+        <div class="feature-num">05</div>
+        <div class="feature-title">GDPR & CCPA Ready</div>
+        <div class="feature-desc">No cookies except sign-in, no analytics, no third-party tracking. Built with privacy by design from the start.</div>
+      </div>
+      <div class="feature-cell reveal">
+        <div class="feature-num">06</div>
+        <div class="feature-title">Audit Report</div>
+        <div class="feature-desc">Pro users get a detailed report showing exactly which metadata fields were found and removed from each file.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- How it works -->
+  <div class="container">
+    <div class="section-label">// How it works</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-title">Upload your files</div>
+        <div class="step-desc">Drag & drop or click to select. Supports JPG, PNG, TIFF, WebP, and PDF files up to 50 MB.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-title">We strip the metadata</div>
+        <div class="step-desc">EXIF, GPS, IPTC, XMP, author info — all removed instantly in your browser. Nothing uploaded.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-title">Download clean files</div>
+        <div class="step-desc">Get your privacy-safe files instantly. Share them with confidence — no hidden data attached.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pricing -->
+  <div class="container" id="pricing">
+    <div class="section-label">// Pricing</div>
+    <div class="guarantee-bar">30-Day Money-Back Guarantee — No questions asked</div>
+    <div class="pricing-grid">
+      <!-- Free -->
+      <div class="pricing-card">
+        <div class="pricing-name">Free</div>
+        <div class="pricing-amount">$0</div>
+        <div class="pricing-period">Free forever — no credit card</div>
+        <ul class="pricing-features">
+          <li><strong>1 file</strong> at a time</li>
+          <li>JPG, PNG, PDF support</li>
+          <li>100% client-side processing</li>
+          <li>No account required</li>
+        </ul>
+        <button onclick="document.getElementById('file-input').click()" class="btn" style="width:100%;text-align:center">Get started</button>
+      </div>
+      <!-- Pro -->
+      <div class="pricing-card featured">
+        <div class="pricing-name" style="color:var(--accent)">Pro <span style="font-size:9px;padding:2px 6px;margin-left:6px;background:var(--accent);color:#fff;border-radius:2px;letter-spacing:0.05em;text-transform:uppercase">Popular</span></div>
+        <div class="pricing-amount">$4<span style="font-size:16px;font-weight:400;color:var(--fg-dim)">/mo</span></div>
+        <div class="pricing-period">Billed monthly · $39/year save 19%</div>
+        <ul class="pricing-features">
+          <li><strong>Unlimited</strong> batch processing</li>
+          <li>All file formats</li>
+          <li>Cleaning audit report</li>
+          <li>Priority email support</li>
+          <li>Cancel anytime</li>
+        </ul>
+        <button onclick="openCheckout('pro')" class="btn btn-accent" style="width:100%;text-align:center">Start Pro trial</button>
+      </div>
+      <!-- Lifetime -->
+      <div class="pricing-card">
+        <div class="pricing-name">Lifetime</div>
+        <div class="pricing-amount">$89</div>
+        <div class="pricing-period">Pay once · Use forever · No recurring</div>
+        <ul class="pricing-features">
+          <li>Everything in Pro</li>
+          <li>No recurring payments</li>
+          <li>All future updates included</li>
+          <li>Never expires</li>
+          <li>Best long-term value</li>
+        </ul>
+        <button onclick="openCheckout('lifetime')" class="btn" style="width:100%;text-align:center;background:var(--fg);color:var(--bg);border-color:var(--fg)">Buy lifetime</button>
+      </div>
+    </div>
+
+    <!-- Compare table -->
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th>Free</th>
+          <th class="accent-col">Pro</th>
+          <th>Lifetime</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Files per session</td><td>1</td><td class="accent-col"><strong>Unlimited</strong></td><td><strong>Unlimited</strong></td></tr>
+        <tr><td>File formats</td><td>JPG, PNG, PDF</td><td class="accent-col">All formats</td><td>All formats</td></tr>
+        <tr><td>Batch folder processing</td><td class="dash">—</td><td class="accent-col check">✓</td><td class="check">✓</td></tr>
+        <tr><td>Cleaning audit report</td><td class="dash">—</td><td class="accent-col check">✓</td><td class="check">✓</td></tr>
+        <tr><td>Metadata preview</td><td class="dash">—</td><td class="accent-col check">✓</td><td class="check">✓</td></tr>
+        <tr><td>Priority support</td><td class="dash">—</td><td class="accent-col check">✓</td><td class="check">✓</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- FAQ -->
+  <div class="container" id="faq" style="padding-top:48px">
+    <div class="section-label">// FAQ</div>
+    <div style="max-width:640px">
+      <details class="faq-item" open>
+        <summary>What metadata does PrivacyClean remove?</summary>
+        <div class="faq-answer">For images: EXIF data (camera model, GPS coordinates, date/time, software used), IPTC captions, and XMP metadata. For PDFs: Author, Creator, Producer, Title, Subject, Keywords, Creation/Modification dates, and XMP metadata streams.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Is my data really private?</summary>
+        <div class="faq-answer">All file processing happens in your browser using WebAssembly and Web APIs. No file data is ever transmitted to our servers. You can verify this by checking your browser's Network tab — you won't see any file uploads.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Will image quality be affected?</summary>
+        <div class="faq-answer">PrivacyClean uses WASM-powered lossless stripping — we remove only the metadata segments, not the image data. Your photos remain pixel-for-pixel identical. No re-encoding, no compression, no quality loss. If WASM is unavailable, we fall back to Canvas re-encoding at 92% JPEG quality.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Does it work on mobile?</summary>
+        <div class="faq-answer">Yes. PrivacyClean works on any modern browser including iOS Safari and Android Chrome. The experience is fully responsive and optimized for touch screens.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Can I get a refund?</summary>
+        <div class="faq-answer">We offer a 30-day money-back guarantee on all paid plans. If you're not satisfied, contact us within 30 days for a full refund — no questions asked.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Is this GDPR and CCPA compliant?</summary>
+        <div class="faq-answer">Yes. We follow privacy by design principles: no analytics, no tracking cookies, minimal data collection. We only store your email for authentication and subscription status. Files are never uploaded. See our <a href="/privacy" style="color:var(--accent)">Privacy Policy</a> for details.</div>
+      </details>
+      <details class="faq-item">
+        <summary>What's the difference between Pro and Lifetime?</summary>
+        <div class="faq-answer">Both unlock the same features. Pro is a monthly ($4/mo) or annual ($39/yr) subscription. Lifetime is a one-time payment of $89 — pay once and use forever with all future updates included. Lifetime is the best value if you plan to use PrivacyClean regularly.</div>
+      </details>
+    </div>
+  </div>
+</main>
+
+<!-- Footer -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <div class="logo-mark" style="width:24px;height:24px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+          <span style="font-weight:700;color:var(--fg)">PrivacyClean</span>
+        </div>
+        Privacy-first metadata removal.<br>Your files never leave your browser.
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <a href="#features">Features</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#faq">FAQ</a>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <a href="/privacy">Privacy Policy</a>
+        <a href="/terms">Terms of Service</a>
+      </div>
+      <div class="footer-col">
+        <h4>Contact</h4>
+        <a href="mailto:support@privacyclean.app">support@privacyclean.app</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; 2026 PrivacyClean</span>
+      <div class="footer-compliance">
+        <span>GDPR</span>
+        <span>CCPA</span>
+        <span>SOC 2 Aligned</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="js/app.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>

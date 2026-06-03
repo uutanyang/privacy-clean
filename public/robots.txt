@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://privacy-clean.pages.dev/sitemap.xml

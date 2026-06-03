@@ -1,0 +1,23 @@
+{
+  "name": "PrivacyClean",
+  "short_name": "PrivacyClean",
+  "description": "Remove EXIF, GPS, and hidden metadata from photos & PDFs — 100% in your browser.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c0c0c",
+  "theme_color": "#c45d3e",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["utilities", "privacy"],
+  "lang": "en"
+}

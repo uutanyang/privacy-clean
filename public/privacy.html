@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en" class="legal-page">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy — PrivacyClean</title>
+<meta name="description" content="PrivacyClean Privacy Policy. We follow privacy by design — no tracking, no analytics, minimal data collection.">
+<link rel="canonical" href="https://privacy-clean.pages.dev/privacy">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Privacy Policy — PrivacyClean">
+<meta property="og:url" content="https://privacy-clean.pages.dev/privacy">
+<meta property="og:site_name" content="PrivacyClean">
+<meta property="og:image" content="https://privacy-clean.pages.dev/og-image.png">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%230c0c0c'/><path d='M50 85s30-15 30-37V25L50 15 20 25v23c0 22 30 37 30 37z' fill='none' stroke='%23c45d3e' stroke-width='4'/></svg>">
+<link rel="manifest" href="/manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/shared.css">
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <a href="/" class="logo"><div class="logo-mark"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>PrivacyClean</a>
+  </div>
+</header>
+
+<main class="container">
+  <h1>Privacy Policy</h1>
+  <p class="updated">Last updated: June 3, 2026</p>
+
+  <section>
+    <h2>1. Our Privacy Commitment</h2>
+    <p>PrivacyClean is built with <strong>privacy by design</strong> principles. Our core function — removing metadata from your files — happens entirely in your browser. Your files never pass through our servers.</p>
+  </section>
+
+  <section>
+    <h2>2. Data We Collect</h2>
+    <p>We collect the absolute minimum data necessary to operate the service:</p>
+    <ul>
+      <li><strong>Email address</strong> — Used only for magic link authentication and subscription management.</li>
+      <li><strong>Subscription status</strong> — Whether you are on Free, Pro, or Lifetime tier.</li>
+    </ul>
+    <p><strong>We do NOT collect:</strong></p>
+    <ul>
+      <li>File contents or metadata — All file processing is 100% client-side</li>
+      <li>Analytics or tracking data — No Google Analytics, no Mixpanel, no tracking pixels</li>
+      <li>IP addresses for tracking — We only use IP for rate limiting to prevent abuse</li>
+      <li>Cookies for advertising — We never use advertising cookies or share data with ad networks</li>
+      <li>Device fingerprints or browser fingerprints</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>3. How We Use Your Data</h2>
+    <ul>
+      <li>Your email is used to send a magic link for passwordless authentication.</li>
+      <li>Your subscription status is stored to determine which features are available to you.</li>
+      <li>We use Cloudflare KV to store authentication tokens and user records.</li>
+      <li>IP addresses are temporarily used for rate limiting and discarded after the rate limit window expires (60 seconds).</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>4. Third-Party Services</h2>
+    <p>We use the following third-party services:</p>
+    <ul>
+      <li><strong>Cloudflare</strong> — Hosting, CDN, and KV storage. <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare Privacy Policy</a></li>
+      <li><strong>Paddle</strong> — Payment processing. Paddle acts as the Merchant of Record. <a href="https://paddle.com/privacy/">Paddle Privacy Policy</a></li>
+      <li><strong>Resend</strong> — Email delivery for magic link emails. Only your email address and the magic link URL are sent. <a href="https://resend.com/privacy">Resend Privacy Policy</a></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>5. Cookies</h2>
+    <p>PrivacyClean uses <strong>no cookies</strong> for tracking or analytics. We use <code>localStorage</code> to store:</p>
+    <ul>
+      <li>Your email address (for authentication persistence across page loads)</li>
+      <li>Your dark mode preference</li>
+      <li>Your cookie consent decision</li>
+    </ul>
+    <p>These are essential for the service to function and are not shared with any third party.</p>
+  </section>
+
+  <section>
+    <h2>6. Data Retention</h2>
+    <ul>
+      <li><strong>Authentication tokens</strong> — Automatically deleted after 10 minutes via TTL.</li>
+      <li><strong>User records</strong> — Stored until you request deletion.</li>
+      <li><strong>Rate limit records</strong> — Automatically deleted after 60 seconds.</li>
+      <li><strong>File data</strong> — Never stored on our servers. All file processing is client-side only.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>7. Your Rights (GDPR & CCPA)</h2>
+    <p>Under GDPR and CCPA, you have the right to:</p>
+    <ul>
+      <li><strong>Access</strong> — Request a copy of the personal data we hold about you.</li>
+      <li><strong>Rectification</strong> — Request correction of any inaccurate data.</li>
+      <li><strong>Deletion</strong> — Request deletion of your personal data.</li>
+      <li><strong>Portability</strong> — Receive your data in a structured, machine-readable format.</li>
+      <li><strong>Objection</strong> — Object to the processing of your personal data.</li>
+      <li><strong>Restriction</strong> — Request restriction of processing your personal data.</li>
+    </ul>
+    <p>To exercise any of these rights, contact us at <a href="mailto:privacy@privacyclean.app">privacy@privacyclean.app</a>. We will respond within 30 days.</p>
+  </section>
+
+  <section>
+    <h2>8. Data Security</h2>
+    <ul>
+      <li>All API communication is encrypted via HTTPS/TLS.</li>
+      <li>Authentication tokens are single-use and expire after 10 minutes.</li>
+      <li>File processing happens entirely in your browser — no file data is transmitted.</li>
+      <li>Rate limiting protects against brute-force attacks.</li>
+      <li>Security headers (CSP, X-Frame-Options, etc.) are enforced.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>9. Children's Privacy</h2>
+    <p>PrivacyClean is not intended for children under 16. We do not knowingly collect data from children under 16.</p>
+  </section>
+
+  <section>
+    <h2>10. International Data Transfers</h2>
+    <p>Your data is processed by Cloudflare, which operates under Standard Contractual Clauses (SCCs) approved by the European Commission. Paddle also complies with GDPR requirements for international data transfers.</p>
+  </section>
+
+  <section>
+    <h2>11. Changes to This Policy</h2>
+    <p>We may update this privacy policy from time to time. We will notify you of any material changes by posting the new policy on this page and updating the "Last updated" date.</p>
+  </section>
+
+  <section>
+    <h2>12. Contact</h2>
+    <ul>
+      <li>Email: <a href="mailto:privacy@privacyclean.app">privacy@privacyclean.app</a></li>
+      <li>Response time: Within 30 days (as required by GDPR)</li>
+    </ul>
+  </section>
+
+  <div class="back-link"><a href="/">&larr; Back to PrivacyClean</a></div>
+</main>
+</body>
+</html>
