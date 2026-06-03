@@ -1,0 +1,23 @@
+{
+  "name": "privacy-clean",
+  "version": "1.0.0",
+  "description": "Browser-side privacy cleaner — EXIF/metadata removal with Paddle subscriptions",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "deploy": "vite build && wrangler deploy",
+    "preview": "vite build && wrangler dev"
+  },
+  "dependencies": {
+    "hono": "^4.7.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.0.0",
+    "@cloudflare/workers-types": "^4.20250529.0",
+    "typescript": "^5.8.0",
+    "vite": "^6.3.0",
+    "wrangler": "^4.0.0"
+  }
+}

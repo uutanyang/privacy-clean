@@ -1,0 +1,34 @@
+{
+  "name": "privacy-clean",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-12-01",
+  // ⚠️ Replace with your Cloudflare Account ID (found in dashboard URL or `wrangler whoami`)
+  // "account_id": "YOUR_ACCOUNT_ID",
+  "assets": {
+    "directory": "./public/",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "kv_namespaces": [
+    {
+      "binding": "KV",
+      "id": "REPLACE_WITH_YOUR_KV_ID"
+    }
+  ],
+  // ── Analytics Engine ──────────────────────────────────────────
+  // Uncomment after creating an analytics engine in the dashboard:
+  // `npx wrangler analytics-engine create privacy_clean_analytics`
+  // "analytics_engine_datasets": [
+  //   { "binding": "ANALYTICS" }
+  // ],
+  "vars": {
+    "PADDLE_ENV": "sandbox",
+    "ALLOWED_ORIGINS": "" // comma-separated origins for CORS, e.g. "https://privacyclean.app,https://www.privacyclean.app"
+  }
+  // Secrets (set via `npx wrangler secret put`):
+  // - JWT_SECRET          (required — random 32+ char string)
+  // - PADDLE_WEBHOOK_SECRET (required — from Paddle Dashboard)
+  // - RESEND_API_KEY      (optional — without it, magic links log to console)
+  // - TURNSTILE_SECRET_KEY (recommended — Cloudflare Turnstile sitekey secret for bot protection)
+}

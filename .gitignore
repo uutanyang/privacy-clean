@@ -19,6 +19,8 @@ dist/
 credentials.json
 
 # ── WASM build artifacts ──
+# wasm/target/ is the Rust build cache — too large, regenerated locally
 wasm/target/
-*.wasm
-public/wasm/*.wasm
+# NOTE: public/wasm/*.wasm is intentionally NOT ignored — it's the pre-compiled
+# WASM binary needed at runtime. Cloudflare Pages build doesn't have a Rust
+# toolchain, so the compiled .wasm must be committed to the repo.
