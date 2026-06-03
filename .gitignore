@@ -22,3 +22,7 @@ credentials.json
 wasm/target/
 *.wasm
 public/wasm/*.wasm
+
+.dev.vars*
+!.dev.vars.example
+!.env.example
