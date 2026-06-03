@@ -7,7 +7,7 @@
   "assets": {
     "directory": "./public/",
     "binding": "ASSETS",
-    "not_found_handling": "single-page-application",
+    "not_found_handling": "404-page",
     "run_worker_first": ["/api/*"]
   },
   "kv_namespaces": [
@@ -24,6 +24,10 @@
   // ],
   "vars": {
     "PADDLE_ENV": "sandbox",
+    "PADDLE_CLIENT_TOKEN": "",       // Set to your Paddle client-side token
+    "PADDLE_PRICE_ID": "",           // Set to your Paddle subscription price ID
+    "PADDLE_LIFETIME_PRICE_ID": "",  // Set to your Paddle lifetime price ID
+    "TURNSTILE_SITE_KEY": "",        // Set to your Cloudflare Turnstile site key
     "ALLOWED_ORIGINS": "" // comma-separated origins for CORS, e.g. "https://privacyclean.app,https://www.privacyclean.app"
   }
   // Secrets (set via `npx wrangler secret put`):

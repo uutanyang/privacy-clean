@@ -4,6 +4,7 @@
 // ========================  WASM LOADER  ========================
 let wasmModule = null;
 let wasmLoading = null;
+let wasmWarningShown = false;
 
 async function loadWasm() {
   if (wasmModule) return wasmModule;
@@ -19,6 +20,10 @@ async function loadWasm() {
       return module;
     } catch (err) {
       console.warn('[WASM] Failed to load, using Canvas fallback:', err.message);
+      if (!wasmWarningShown) {
+        wasmWarningShown = true;
+        showToast('WASM unavailable — using lossy Canvas fallback. Images may lose quality.', 'warning');
+      }
       return null;
     }
   });
@@ -119,12 +124,24 @@ function updateBatchBar() {
 }
 
 function downloadAll() {
-  processedFiles.forEach(f => {
+  if (processedFiles.length === 0) return;
+
+  if (processedFiles.length === 1) {
+    const f = processedFiles[0];
     const a = document.createElement('a');
     a.href = f.url;
     a.download = f.name;
     a.click();
-  });
+  } else {
+    processedFiles.forEach((f, i) => {
+      setTimeout(() => {
+        const a = document.createElement('a');
+        a.href = f.url;
+        a.download = f.name;
+        a.click();
+      }, i * 300);
+    });
+  }
   showToast(`Downloaded ${processedFiles.length} file${processedFiles.length > 1 ? 's' : ''}`, 'success');
 }
 
@@ -152,8 +169,20 @@ function setupDragDrop() {
 }
 
 // ========================  FILE HANDLING  ========================
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+
 function handleFiles(files) {
   if (!files.length) return;
+
+  // Enforce 50MB per-file limit
+  const oversized = Array.from(files).filter(f => f.size > MAX_FILE_SIZE);
+  if (oversized.length > 0) {
+    const names = oversized.map(f => `${f.name} (${formatSize(f.size)})`).join(', ');
+    showToast(`File(s) exceed 50 MB limit: ${names}`, 'error');
+    const valid = Array.from(files).filter(f => f.size <= MAX_FILE_SIZE);
+    if (!valid.length) return;
+    files = valid;
+  }
 
   // Free users: single file only
   if (!isPro && files.length > 1) {
@@ -335,6 +364,7 @@ async function stripPdfFallback(file) {
   str = str.replace(/<x:xmpmeta[\s\S]*?<\/x:xmpmeta>/gi, '');
 
   // Clear metadata field values (replace value with empty string, keep structure)
+  // Handle both () string values and <> hex string values
   str = str.replace(/\/Author\s*\([^)]*\)/gi, '/Author ()');
   str = str.replace(/\/Creator\s*\([^)]*\)/gi, '/Creator ()');
   str = str.replace(/\/Producer\s*\([^)]*\)/gi, '/Producer ()');
@@ -343,6 +373,14 @@ async function stripPdfFallback(file) {
   str = str.replace(/\/Keywords\s*\([^)]*\)/gi, '/Keywords ()');
   str = str.replace(/\/CreationDate\s*\([^)]*\)/gi, '/CreationDate ()');
   str = str.replace(/\/ModDate\s*\([^)]*\)/gi, '/ModDate ()');
+  str = str.replace(/\/Author\s*<[^>]*>/gi, '/Author <>');
+  str = str.replace(/\/Creator\s*<[^>]*>/gi, '/Creator <>');
+  str = str.replace(/\/Producer\s*<[^>]*>/gi, '/Producer <>');
+  str = str.replace(/\/Title\s*<[^>]*>/gi, '/Title <>');
+  str = str.replace(/\/Subject\s*<[^>]*>/gi, '/Subject <>');
+  str = str.replace(/\/Keywords\s*<[^>]*>/gi, '/Keywords <>');
+  str = str.replace(/\/CreationDate\s*<[^>]*>/gi, '/CreationDate <>');
+  str = str.replace(/\/ModDate\s*<[^>]*>/gi, '/ModDate <>');
 
   // Convert back to bytes using latin-1 (preserves byte values exactly)
   const cleaned = new Uint8Array(str.length);

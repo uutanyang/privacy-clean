@@ -2,11 +2,26 @@
 // All processing happens locally. Only subscription status hits the API.
 
 // ========================  CONFIG  ========================
-const PADDLE_ENV = 'sandbox';          // change to 'production' when live
-const PADDLE_CLIENT_TOKEN = 'pro_01kt58e7xmt3ynch8egn7t2ret'; // replace with real token from Paddle Dashboard
-const PADDLE_PRICE_ID = 'pri_01kt58h0qstn1zg50v51nzjkrt';   // replace with your subscription price ID
-const PADDLE_LIFETIME_PRICE_ID = 'pri_01kt58ksx2svjcpkx06jzetz1f'; // replace with your lifetime price ID
-const TURNSTILE_SITE_KEY = '';  // replace with your Cloudflare Turnstile site key (e.g. 0x4AAAAAAA...)
+let PADDLE_ENV = 'sandbox';
+let PADDLE_CLIENT_TOKEN = '';
+let PADDLE_PRICE_ID = '';
+let PADDLE_LIFETIME_PRICE_ID = '';
+let TURNSTILE_SITE_KEY = '';
+
+// Fetch public config from backend (no secrets — only public IDs)
+async function loadConfig() {
+  try {
+    const res = await fetch('/api/config');
+    if (res.ok) {
+      const cfg = await res.json();
+      PADDLE_ENV = cfg.paddleEnv || 'sandbox';
+      PADDLE_CLIENT_TOKEN = cfg.paddleClientToken || '';
+      PADDLE_PRICE_ID = cfg.paddlePriceId || '';
+      PADDLE_LIFETIME_PRICE_ID = cfg.paddleLifetimePriceId || '';
+      TURNSTILE_SITE_KEY = cfg.turnstileSiteKey || '';
+    }
+  } catch {}
+}
 
 // ========================  WASM LOADER  ========================
 let wasmModule = null;
@@ -24,6 +39,7 @@ async function loadWasm() {
       return mod;
     } catch (err) {
       console.warn('[WASM] Failed to load, using Canvas fallback:', err.message);
+      showToast('WASM unavailable — using lossy Canvas fallback. Images may lose quality.', 'warning');
       return null;
     }
   })();
@@ -32,6 +48,7 @@ async function loadWasm() {
 
 // ========================  STATE  ========================
 let userEmail = localStorage.getItem('pc_email') || '';
+let sessionToken = localStorage.getItem('pc_token') || '';
 let userTier = 'free'; // 'free' | 'pro' | 'lifetime'
 let isPro = false;     // true for pro or lifetime
 const processedFiles = []; // { name, blob, url, originalSize, cleanedSize, metadataFound }
@@ -127,9 +144,10 @@ function startMagicLinkCountdown() {
 }
 
 // ========================  INIT  ========================
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   initDarkMode();
   initCookieBanner();
+  await loadConfig();
   initPaddle();
   setupDragDrop();
   if (userEmail) checkTier();
@@ -233,6 +251,10 @@ async function loginWithToken(token) {
   if (data.email) {
     userEmail = data.email;
     localStorage.setItem('pc_email', userEmail);
+    if (data.token) {
+      sessionToken = data.token;
+      localStorage.setItem('pc_token', sessionToken);
+    }
     await checkTier();
     updateUI();
     closeLoginModal();
@@ -249,20 +271,42 @@ if (location.search.includes('token=')) {
 
 function handleLogout() {
   userEmail = '';
+  sessionToken = '';
   userTier = 'free';
   isPro = false;
   localStorage.removeItem('pc_email');
+  localStorage.removeItem('pc_token');
   updateUI();
   showToast("You've been signed out.", 'info');
+}
+
+async function handleDeleteAccount() {
+  if (!userEmail) return;
+  if (!confirm('This will permanently delete all your data from our servers. This action cannot be undone. Continue?')) return;
+
+  try {
+    const headers = { 'x-user-email': userEmail };
+    if (sessionToken) headers['Authorization'] = `Bearer ${sessionToken}`;
+    const res = await fetch('/api/user', { method: 'DELETE', headers });
+    const data = await res.json();
+    if (data.ok) {
+      handleLogout();
+      showToast('Your data has been permanently deleted.', 'success');
+    } else {
+      showToast(data.message || 'Failed to delete data.', 'error');
+    }
+  } catch {
+    showToast('Network error. Please try again.', 'error');
+  }
 }
 
 // ========================  TIER / API  ========================
 async function checkTier() {
   if (!userEmail) return;
   try {
-    const res = await fetch('/api/verify', {
-      headers: { 'x-user-email': userEmail }
-    });
+    const headers = { 'x-user-email': userEmail };
+    if (sessionToken) headers['Authorization'] = `Bearer ${sessionToken}`;
+    const res = await fetch('/api/verify', { headers });
     const data = await res.json();
     userTier = data.tier || 'free';
     isPro = data.isPro || userTier === 'pro' || userTier === 'lifetime';
@@ -291,6 +335,8 @@ function updateUI() {
   if (btnPro) btnPro.style.display = isPro ? 'none' : '';
   if (btnLogin) btnLogin.style.display = userEmail ? 'none' : '';
   if (btnLogout) btnLogout.style.display = userEmail ? '' : 'none';
+  const btnDelete = document.getElementById('btn-delete');
+  if (btnDelete) btnDelete.style.display = userEmail ? '' : 'none';
   if (proHint) proHint.className = isPro ? '' : 'visible';
 }
 
@@ -311,10 +357,20 @@ function openCheckout(plan) {
   });
 }
 
-// Refresh tier after return from checkout
+// Refresh tier after return from checkout — with polling for webhook delay
 if (location.search.includes('refresh=1')) {
   history.replaceState({}, '', location.pathname);
-  setTimeout(() => checkTier(), 2000); // slight delay for webhook processing
+  let attempts = 0;
+  const maxAttempts = 10;
+  const pollInterval = setInterval(async () => {
+    attempts++;
+    await checkTier();
+    if (isPro || attempts >= maxAttempts) {
+      clearInterval(pollInterval);
+      if (isPro) showToast('Pro activated! Enjoy your upgraded features.', 'success');
+      else if (attempts >= maxAttempts) showToast('Payment detected. Your account will upgrade shortly.', 'info');
+    }
+  }, 2000);
 }
 
 // ========================  FILE HANDLING  ========================
@@ -341,12 +397,26 @@ function updateBatchBar() {
 }
 
 function downloadAll() {
-  processedFiles.forEach(f => {
+  if (processedFiles.length === 0) return;
+
+  if (processedFiles.length === 1) {
+    // Single file: direct download
+    const f = processedFiles[0];
     const a = document.createElement('a');
     a.href = f.url;
     a.download = f.name;
     a.click();
-  });
+  } else {
+    // Multiple files: download with staggered delay to avoid popup blocker
+    processedFiles.forEach((f, i) => {
+      setTimeout(() => {
+        const a = document.createElement('a');
+        a.href = f.url;
+        a.download = f.name;
+        a.click();
+      }, i * 300);
+    });
+  }
   showToast(`Downloaded ${processedFiles.length} file${processedFiles.length > 1 ? 's' : ''}`, 'success');
 }
 
@@ -358,8 +428,20 @@ function clearAll() {
   showToast('All files cleared', 'info');
 }
 
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+
 function handleFiles(files) {
   if (!files.length) return;
+
+  // Enforce 50MB per-file limit
+  const oversized = Array.from(files).filter(f => f.size > MAX_FILE_SIZE);
+  if (oversized.length > 0) {
+    const names = oversized.map(f => `${f.name} (${formatSize(f.size)})`).join(', ');
+    showToast(`File(s) exceed 50 MB limit: ${names}`, 'error');
+    const valid = Array.from(files).filter(f => f.size <= MAX_FILE_SIZE);
+    if (!valid.length) return;
+    files = valid;
+  }
 
   if (!isPro && files.length > 1) {
     showToast('Free plan is limited to 1 file at a time. Upgrade for batch processing!', 'warning');
@@ -607,6 +689,7 @@ async function stripPdfMetadata(bytesOrFile) {
   str = str.replace(/<x:xmpmeta[\s\S]*?<\/x:xmpmeta>/gi, '');
 
   // Clear metadata field values (keep structure, empty the values)
+  // Handle both () string values and <> hex string values
   str = str.replace(/\/Author\s*\([^)]*\)/gi, '/Author ()');
   str = str.replace(/\/Creator\s*\([^)]*\)/gi, '/Creator ()');
   str = str.replace(/\/Producer\s*\([^)]*\)/gi, '/Producer ()');
@@ -615,6 +698,15 @@ async function stripPdfMetadata(bytesOrFile) {
   str = str.replace(/\/Keywords\s*\([^)]*\)/gi, '/Keywords ()');
   str = str.replace(/\/CreationDate\s*\([^)]*\)/gi, '/CreationDate ()');
   str = str.replace(/\/ModDate\s*\([^)]*\)/gi, '/ModDate ()');
+  // Hex string values: /Author <4a6f686e> → /Author <>
+  str = str.replace(/\/Author\s*<[^>]*>/gi, '/Author <>');
+  str = str.replace(/\/Creator\s*<[^>]*>/gi, '/Creator <>');
+  str = str.replace(/\/Producer\s*<[^>]*>/gi, '/Producer <>');
+  str = str.replace(/\/Title\s*<[^>]*>/gi, '/Title <>');
+  str = str.replace(/\/Subject\s*<[^>]*>/gi, '/Subject <>');
+  str = str.replace(/\/Keywords\s*<[^>]*>/gi, '/Keywords <>');
+  str = str.replace(/\/CreationDate\s*<[^>]*>/gi, '/CreationDate <>');
+  str = str.replace(/\/ModDate\s*<[^>]*>/gi, '/ModDate <>');
 
   // Convert back to bytes using latin-1 (preserves byte values exactly)
   const cleaned = new Uint8Array(str.length);
@@ -680,6 +772,7 @@ window.clearAll = clearAll;
 window.acceptCookies = acceptCookies;
 window.declineCookies = declineCookies;
 window.downloadAuditReport = downloadAuditReport;
+window.handleDeleteAccount = handleDeleteAccount;
 
 // ========================  AUDIT REPORT (Pro)  ========================
 function downloadAuditReport() {

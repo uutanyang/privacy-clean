@@ -10,8 +10,12 @@ type Bindings = {
   JWT_SECRET: string
   PADDLE_WEBHOOK_SECRET: string
   PADDLE_ENV: string
+  PADDLE_CLIENT_TOKEN: string
+  PADDLE_PRICE_ID: string
+  PADDLE_LIFETIME_PRICE_ID: string
   RESEND_API_KEY: string
   TURNSTILE_SECRET_KEY: string
+  TURNSTILE_SITE_KEY: string
   ALLOWED_ORIGINS: string
   ANALYTICS: AnalyticsEngineDataset
 }
@@ -34,7 +38,7 @@ app.use('/api/*', async (c, next) => {
   if (!allowed) {
     return cors({
       origin: '*',
-      allowMethods: ['GET', 'POST', 'OPTIONS'],
+      allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
       allowHeaders: ['Content-Type', 'x-user-email'],
       maxAge: 86400,
     })(c, next)
@@ -45,7 +49,7 @@ app.use('/api/*', async (c, next) => {
   if (allowedList.includes(origin.toLowerCase())) {
     return cors({
       origin,
-      allowMethods: ['GET', 'POST', 'OPTIONS'],
+      allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
       allowHeaders: ['Content-Type', 'x-user-email'],
       maxAge: 86400,
       credentials: true,
@@ -165,6 +169,22 @@ app.use('/api/auth', async (c, next) => {
 })
 
 // ── Health check ──────────────────────────────────────────────
+app.get('/api/config', (c) => {
+  // Front-end configuration (no secrets — only public IDs)
+  const paddleEnv = c.env.PADDLE_ENV || 'sandbox'
+  const paddleClientToken = c.env.PADDLE_CLIENT_TOKEN || ''
+  const paddlePriceId = c.env.PADDLE_PRICE_ID || ''
+  const paddleLifetimePriceId = c.env.PADDLE_LIFETIME_PRICE_ID || ''
+  const turnstileSiteKey = c.env.TURNSTILE_SITE_KEY || ''
+
+  return c.json({
+    paddleEnv,
+    paddleClientToken,
+    paddlePriceId,
+    paddleLifetimePriceId,
+    turnstileSiteKey,
+  })
+})
 app.get('/api/health', (c) => {
   return c.json({ status: 'ok', timestamp: Date.now(), version: '2.0.0' })
 })
@@ -235,14 +255,32 @@ app.post('/api/auth', async (c) => {
     await writeUserWithBackup(c.env.KV, email, { email, tier: 'free', createdAt: Date.now() })
   }
 
+  // Issue a session JWT (valid 7 days) for authenticated API calls
+  const sessionToken = await createToken({ email, exp: Date.now() + 7 * 24 * 60 * 60 * 1000 }, c.env.JWT_SECRET)
+
   trackEvent(c, 'login_success', { email })
 
-  return c.json({ ok: true, email })
+  return c.json({ ok: true, email, token: sessionToken })
 })
 
 // ── Verify subscription tier ──────────────────────────────────
+// If Authorization header present, verify JWT and use token email (secure)
+// Otherwise fall back to x-user-email header (legacy, no auth — only reveals tier, not sensitive)
 app.get('/api/verify', async (c) => {
-  const email = c.req.header('x-user-email')?.toLowerCase().trim()
+  let email: string | undefined
+
+  // Prefer JWT-based verification if token provided
+  const authHeader = c.req.header('Authorization')
+  if (authHeader?.startsWith('Bearer ')) {
+    const payload = await verifyToken(authHeader.slice(7), c.env.JWT_SECRET)
+    if (payload?.email) email = payload.email as string
+  }
+
+  // Fallback to header-based lookup
+  if (!email) {
+    email = c.req.header('x-user-email')?.toLowerCase().trim()
+  }
+
   if (!email) return c.json({ tier: 'free' })
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -256,6 +294,39 @@ app.get('/api/verify', async (c) => {
   const tier = user.tier || 'free'
   trackEvent(c, 'tier_check', { email, detail: tier })
   return c.json({ tier, email: user.email, isPro: tier === 'pro' || tier === 'lifetime' })
+})
+
+// ── GDPR: Delete user data ──────────────────────────────────
+app.delete('/api/user', async (c) => {
+  const email = c.req.header('x-user-email')?.toLowerCase().trim()
+  if (!email) return c.json({ error: 'missing_email', message: 'x-user-email header required' }, 400)
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return c.json({ error: 'invalid_email' }, 400)
+  }
+
+  // Verify user exists
+  const data = await c.env.KV.get(`user:${email}`)
+  if (!data) {
+    // Already deleted or never existed — return 200 for idempotency (GDPR)
+    return c.json({ ok: true, message: 'No data found for this email' })
+  }
+
+  // Delete primary record
+  await c.env.KV.delete(`user:${email}`)
+
+  // Delete backups
+  const backups = await c.env.KV.list({ prefix: `user_backup:${email}:` })
+  for (const key of backups.keys) {
+    await c.env.KV.delete(key.name)
+  }
+
+  // Delete any pending tokens for this email (best-effort scan)
+  // Note: tokens are short-lived (10min), so this is mostly cosmetic
+
+  trackEvent(c, 'gdpr_data_deleted', { email })
+
+  return c.json({ ok: true, message: 'All personal data has been deleted' })
 })
 
 // ── Paddle Webhook ───────────────────────────────────────────

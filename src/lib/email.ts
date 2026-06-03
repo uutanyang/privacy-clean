@@ -74,17 +74,17 @@ function generateMagicLinkHtml(magicLink: string): string {
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f8fafc;margin:0;padding:40px 16px;">
   <div style="max-width:480px;margin:0 auto;background:#fff;border-radius:16px;padding:40px;border:1px solid #e2e8f0;">
     <div style="text-align:center;margin-bottom:24px;">
-      <div style="width:48px;height:48px;background:#2563eb;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:22px;">P</div>
+      <div style="width:48px;height:48px;background:#c45d3e;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:22px;">P</div>
     </div>
     <h1 style="font-size:22px;font-weight:700;text-align:center;color:#0f172a;margin:0 0 8px;">Sign in to PrivacyClean</h1>
     <p style="text-align:center;color:#64748b;font-size:15px;margin:0 0 28px;line-height:1.5;">Click the button below to sign in. This link expires in <strong>10 minutes</strong>.</p>
     <div style="text-align:center;margin-bottom:24px;">
-      <a href="${magicLink}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:14px 36px;border-radius:12px;font-weight:600;font-size:16px;letter-spacing:0.01em;">Sign in to PrivacyClean</a>
+      <a href="${magicLink}" style="display:inline-block;background:#c45d3e;color:#fff;text-decoration:none;padding:14px 36px;border-radius:12px;font-weight:600;font-size:16px;letter-spacing:0.01em;">Sign in to PrivacyClean</a>
     </div>
     <div style="background:#f1f5f9;border-radius:10px;padding:16px;margin-bottom:20px;">
       <p style="margin:0 0 8px;font-size:13px;color:#475569;font-weight:600;">Button not working?</p>
       <p style="margin:0;font-size:13px;color:#64748b;line-height:1.5;">Copy and paste this link into your browser:</p>
-      <p style="margin:8px 0 0;font-size:12px;color:#2563eb;word-break:break-all;">${magicLink}</p>
+      <p style="margin:8px 0 0;font-size:12px;color:#c45d3e;word-break:break-all;">${magicLink}</p>
     </div>
     <div style="border-top:1px solid #e2e8f0;padding-top:16px;margin-top:8px;">
       <p style="text-align:center;color:#94a3b8;font-size:12px;margin:0;line-height:1.5;">If you didn't request this email, you can safely ignore it.<br>Your account is secure — no one else can access it.</p>

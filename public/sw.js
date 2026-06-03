@@ -5,6 +5,8 @@ const PRECACHE_URLS = [
   '/css/shared.css',
   '/js/app.js',
   '/js/landing-shared.js',
+  '/wasm/privacy_clean_wasm.js',
+  '/wasm/privacy_clean_wasm_bg.wasm',
   '/remove-exif-iphone',
   '/remove-exif-android',
   '/strip-pdf-metadata',

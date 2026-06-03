@@ -509,6 +509,17 @@ fn clear_pdf_field(data: &mut [u8], field: &str, _replacement: &str) {
                 if clear_start < clear_end {
                     found.push((clear_start, clear_end));
                 }
+            } else if paren_pos < data.len() && data[paren_pos] == b'<' {
+                // Hex string value: <4A6F686E> — clear hex content between < and >
+                let mut end_pos = paren_pos + 1;
+                while end_pos < data.len() && data[end_pos] != b'>' {
+                    end_pos += 1;
+                }
+                let clear_start = paren_pos + 1;
+                let clear_end = end_pos;
+                if clear_start < clear_end {
+                    found.push((clear_start, clear_end));
+                }
             }
 
             search_pos = after_field;

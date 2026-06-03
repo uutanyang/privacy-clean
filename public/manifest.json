@@ -1,7 +1,7 @@
 {
-  "name": "PrivacyClean",
+  "name": "PrivacyClean — Remove EXIF & Metadata from Files",
   "short_name": "PrivacyClean",
-  "description": "Remove EXIF, GPS, and hidden metadata from photos & PDFs — 100% in your browser.",
+  "description": "Remove EXIF, GPS, and hidden metadata from photos & PDFs — 100% in your browser. GDPR compliant.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0c0c0c",
@@ -15,9 +15,26 @@
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ],
   "categories": ["utilities", "privacy"],
-  "lang": "en"
+  "lang": "en",
+  "shortcuts": [
+    {
+      "name": "Clean Image",
+      "short_name": "Image",
+      "description": "Remove EXIF and metadata from an image",
+      "url": "/?action=image",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Clean PDF",
+      "short_name": "PDF",
+      "description": "Strip metadata from a PDF document",
+      "url": "/strip-pdf-metadata",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
 }
